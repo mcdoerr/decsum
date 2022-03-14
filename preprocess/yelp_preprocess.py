@@ -2,15 +2,19 @@
 Data can be downloaded from https://www.yelp.com/dataset/download
 """
 
-import pickle
+import argparse
 import gzip
 import json
 import pprint
 import argparse
 import os
-import datetime
+from datetime import datetime
 import logging
-import pandas as pd
+import os
+import pprint
+from datetime import datetime
+
+from sklearn.model_selection import train_test_split
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logging.info('Admin logged in')
@@ -21,11 +25,11 @@ DATE_PATTERN = "%Y-%m-%d %H:%M:%S"
 
 
 def get_created_time(text):
-    return int(datetime.strptime(text, DATE_PATTERN).strftime("%s"))
+    return int(datetime.strptime(text, DATE_PATTERN).strftime("%S"))
 
 
 def convert_data(input_file, output_file):
-    with open(input_file) as fin, gzip.open(output_file, "wt") as fout:
+    with open(input_file, encoding='utf-8') as fin, gzip.open(output_file, "wt", encoding='utf-8') as fout:
         business_dict = {}
         count = 0
         for line in fin:
@@ -51,11 +55,11 @@ if __name__ == "__main__":
 
     # Required parameters
     parser.add_argument("--yelp_data_dir",
-                        default="/data/yelp",
+                        default="data/yelp/",
                         type=str,
                         help="")
     parser.add_argument("--output_dir",
-                        default="/data/joe/yelp",
+                        default="data/out/",
                         type=str,
                         help="")
     parser.add_argument("--data_split",
@@ -71,7 +75,7 @@ if __name__ == "__main__":
     logging.info(f"args: {args}")   
 
     restaurant_business_ids = set()
-    with open(os.path.join(args.yelp_data_dir, "business.json"), "r") as f:    
+    with open(os.path.join(args.yelp_data_dir, "business.json"), "r", encoding='utf-8') as f:
         for line in f:  
             if line:    
                 json_content = json.loads(line)
@@ -90,7 +94,7 @@ if __name__ == "__main__":
 
     logging.info(f"converting grouped reviews into resutaurant only reviews and compute average of first {args.num_review} reviews")
     out_file = os.path.join(args.output_dir, f"yelp_10reviews_{args.num_review}avg.jsonl.gz")
-    with gzip.open(grouped_reviews_filepath, 'rt') as f_in,  gzip.open(out_file, "wt") as fout:
+    with gzip.open(grouped_reviews_filepath, 'rt', encoding='utf-8') as f_in,  gzip.open(out_file, "wt", encoding='utf-8') as fout:
         for l in f_in:
             r = json.loads(l)
             if r['business'] not in restaurant_business_ids:
@@ -113,20 +117,28 @@ if __name__ == "__main__":
         
         def dump_jsonl_gz(obj, outpath):
             # obj is list of json
-            with gzip.open(outpath, "wt") as fout:
+            with gzip.open(outpath, "wt", encoding='utf-8') as fout:
                 for o in obj:
                     fout.write("%s\n" % json.dumps(o))
         
-        splits = ["train", "dev", "test"]
-        split_ids = {}
-        for s in splits:
-            split_ids[s] = set(pd.read_csv(f"preprocess/{s}_business_ids.csv").business.values)
-        
         reviews = []
-        with gzip.open(out_file, 'rt') as f:
+        with gzip.open(out_file, 'rt', encoding='utf-8') as f:
             for line in f:
                 reviews.append(json.loads(line))
-            
+
+        review_id = []
+        for review in reviews:
+            review_id.append(review['business'])
+
+        train, test = train_test_split(review_id, test_size=0.2, random_state=517)
+        train, dev = train_test_split(train, test_size=0.2, random_state=517)
+
+        splits = ["train", "dev", "test"]
+        split_ids = {}
+        split_ids["train"] = set(train)
+        split_ids["test"] = set(test)
+        split_ids["dev"] = set(dev)
+
         for split, ids in split_ids.items():
             split_reviews = []
             for review in reviews:
