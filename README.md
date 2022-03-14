@@ -25,6 +25,10 @@ We use an updated dataset from https://www.yelp.com/dataset/download as compared
 ```
 python -m preprocess.yelp_preprocess [--yelp_data_dir YELP_DATA_DIR] [--output_dir OUTPUT_DIR]
 ```
+The outputs from running this scripts with the latest Yelp data have been provided under `data` directory
+
+## Regression Model Comparison
+The details for model comparison between Longformer and Logistic (Ridge) Regression are in `model_comparison.py` file under `models/model_comparison` with sample test results.
 
 ## Train Longformer model
 >It takes about an hours to train longformer on GTX 1080 (11GB) with half precision, with sequence length 100. Sequence length is updated from the original model to fit into memory.
